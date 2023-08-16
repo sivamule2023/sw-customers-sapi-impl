@@ -1,0 +1,11 @@
+%dw 2.0
+
+type auto_ddf26eff_013b_45c8_b3c4_e34a6a484fae_Output_Variables_findAddressByCustomerId_and_Addit_to_customer = {|
+  customerId: Null, 
+  firstName: Null, 
+  lastName: Null, 
+  email: Null, 
+  phone: Null, 
+  addresses: Array<{|    houseNumber: String | Null,     street: String | Null,     city: String | Null,     pincode: String | Null,     addressType: String  |}>
+|}
+

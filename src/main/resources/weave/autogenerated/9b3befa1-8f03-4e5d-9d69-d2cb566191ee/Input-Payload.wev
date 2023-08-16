@@ -1,0 +1,11 @@
+%dw 2.0
+
+type auto_9b3befa1_8f03_4e5d_9d69_d2cb566191ee_Input_Payload = {
+  pincode: String, 
+  city: String, 
+  street: String, 
+  addressType: "delivery" | "billing", 
+  houseNumber: String, 
+  _?: Any
+}
+

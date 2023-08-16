@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_ddf26eff_013b_45c8_b3c4_e34a6a484fae_Output_Variables_addresses = Array<{|  address_id: Number,   house_number?: String,   street?: String,   city?: String,   pincode?: String,   address_type: String,   customer_id?: Number|}>
+

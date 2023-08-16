@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_092c6478_9e4b_4c1b_89ba_3bb681eb9c39_Output_Payload = Array<{|  customer_id: Number,   last_name?: String,   first_name?: String,   email?: String,   phone?: String|}>
+

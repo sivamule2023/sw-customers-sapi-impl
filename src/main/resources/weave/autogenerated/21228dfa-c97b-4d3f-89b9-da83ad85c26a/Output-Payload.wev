@@ -1,0 +1,9 @@
+%dw 2.0
+
+type auto_21228dfa_c97b_4d3f_89b9_da83ad85c26a_Output_Payload = Array<{  firstName: String,   lastName?: String,   addresses?: Array<{    pincode: String,     city: String,     street: String,     addressType: "delivery" | "billing",     houseNumber: String,     _?: Any  }>, 
+  phone: String, 
+  customerId?: String, 
+  email: String, 
+  _?: Any
+}>
+

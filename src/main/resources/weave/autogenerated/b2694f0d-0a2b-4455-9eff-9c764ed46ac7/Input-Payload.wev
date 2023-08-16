@@ -1,0 +1,12 @@
+%dw 2.0
+
+type auto_b2694f0d_0a2b_4455_9eff_9c764ed46ac7_Input_Payload = {
+  firstName: String, 
+  lastName?: String, 
+  addresses?: Array<{    pincode: String,     city: String,     street: String,     addressType: "delivery" | "billing",     houseNumber: String,     _?: Any  }>, 
+  phone: String, 
+  customerId?: String, 
+  email: String, 
+  _?: Any
+}
+

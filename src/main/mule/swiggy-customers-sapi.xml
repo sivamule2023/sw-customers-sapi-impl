@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <apikit:config name="swiggy-customers-sapi-config" api="resource::85350def-3e58-4160-814c-569a686bc29f:01-sw-customers-sapi:1.0.0:raml:zip:swiggy-customers-sapi.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+	<flow name="swiggy-customers-sapi-main">
+        <http:listener path="/customersapi/*" config-ref="HTTP_Listener_config">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener> 
+        <apikit:router config-ref="swiggy-customers-sapi-config" />
+    </flow>
+    <flow name="swiggy-customers-sapi-console">
+        <http:listener path="/customerapiconsole/*"  config-ref="HTTP_Listener_config">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="swiggy-customers-sapi-config" />
+    </flow>
+    <flow name="put:\customers\(id):application\json:swiggy-customers-sapi-config">
+        <ee:transform doc:name="Set varialble ID">
+            <ee:variables>
+                <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="updateCustomer" doc:id="4d4d8cfd-7f21-4b1c-b3fc-69088869ce17" name="updateCustomer"/>
+    </flow>
+    <flow name="get:\customers:swiggy-customers-sapi-config">
+        <flow-ref doc:name="getallcustomers" doc:id="8bf09b6b-be10-4210-b1e7-6bab9b48ea8a" name="getallcustomers"/>
+		<logger level="INFO" message="got all customers" />
+    </flow>
+    <flow name="get:\customers\(id):swiggy-customers-sapi-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<flow-ref doc:name="getcustomerbyid" doc:id="7b64c920-9c5c-4bdd-9bfc-f8b07ee5dfed" name="getcustomerbyid"/>
+    </flow>
+    <flow name="post:\customers\(id)\addresses:application\json:swiggy-customers-sapi-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<flow-ref doc:name="addAddressToCustomer" doc:id="73eef9f1-cbbd-4342-9119-2bdc8247d4bc" name="addAddressToCustomer"/>
+    </flow>
+    <flow name="post:\customers:application\json:swiggy-customers-sapi-config">
+        <flow-ref doc:name="addCustomer" doc:id="e3ec4ca8-d1d5-44f4-96df-da73a9fa6c10" name="addCustomer"/>
+		<logger level="INFO" message="post:\customers:application\json:swiggy-customers-sapi-config" />
+    </flow>
+</mule>

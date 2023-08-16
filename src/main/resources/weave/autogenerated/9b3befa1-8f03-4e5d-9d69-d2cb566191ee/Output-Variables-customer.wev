@@ -1,0 +1,10 @@
+%dw 2.0
+
+type auto_9b3befa1_8f03_4e5d_9d69_d2cb566191ee_Output_Variables_customer = {|
+  customer_id: Number, 
+  last_name?: String, 
+  first_name?: String, 
+  email?: String, 
+  phone?: String
+|}
+

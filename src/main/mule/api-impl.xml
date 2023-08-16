@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="updateCustomer" doc:id="fdc94059-4683-4ee3-951d-463a100de045" >
+		<flow-ref doc:name="findCustomerById-and-setcustomer-var" doc:id="b647f933-8e02-4a6e-bcc8-417e105661ce" name="findCustomerById" target="customer" targetValue="#[payload[0]]"/>
+		<db:update doc:name="Update" doc:id="af7bcda5-404c-4c95-ae73-6df05f5a31b6" config-ref="Database_Config">
+			<db:sql ><![CDATA[update customers set last_name= :lname,first_name= :fname
+,email= :email,phone=:phone where customer_id=:id  ]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	id: vars.id,
+	lname: payload.lastName default vars.customer.last_name,
+	fname: payload.firstName default vars.customer.first_name,
+	email: payload.email default vars.customer.email,
+	phone: payload.phone default vars.customer.phone
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="8d78394a-1838-40df-9b43-99daca2b58e7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if(payload.affectedRows==0)
+dw::Runtime::fail("Customer with ID " ++ vars.id ++ "  not found")
+else 
+{
+  message: "Customer updated successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="d55a1186-da20-46a8-b9f9-cf7ba91f11bf" message="customer updated succesfully"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="a447b194-5da0-44b3-80c5-9bda7b6d6aaf" >
+				<ee:transform doc:name="Set Status to 404 and erroe message" doc:id="b5a49624-3787-4c61-a3b1-a6976e7355a6" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Customer with id " ++ (vars.id default 0 as String ) ++" is not found" 
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="addCustomer" doc:id="b2694f0d-0a2b-4455-9eff-9c764ed46ac7" >
+		<ee:transform doc:name="Transform Message" doc:id="3a6a8e40-5477-4e9a-961a-0780c2a680f3" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="customer" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:insert doc:name="Insert Customer" doc:id="75faf035-2302-4ef0-bf43-e163f4ae2636" config-ref="Database_Config" target="insertresult" autoGenerateKeys="true">
+			<db:sql ><![CDATA[insert into customers(last_name,first_name,email,phone)
+values(:lname,:fname,:email,:phone)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	lname: payload.lastName,
+	fname: payload.firstName,
+	email:payload.email,
+	phone: payload.phone
+}]]]></db:input-parameters>
+			<db:auto-generated-keys-column-names >
+				<db:auto-generated-keys-column-name value="customer_id" />
+			</db:auto-generated-keys-column-names>
+		</db:insert>
+		<set-variable value="#[vars.insertresult.generatedKeys.GENERATED_KEY]" doc:name="Set Variable" doc:id="66943149-12ea-4742-b52c-86bc1de229cb" variableName="id" />
+		<choice doc:name="Choice" doc:id="be6c5531-3e8c-41f6-9c14-30d513cea592">
+			<when expression="#[vars.customer.addresses? and sizeOf(vars.customer.addresses)&gt;0]">
+				<foreach doc:name="For Each" doc:id="4cac1d37-0abf-449e-babc-d017daec9785" collection="#[vars.customer.addresses]">
+					<flow-ref doc:name="addAddressToCustomer" doc:id="6f078c0f-e075-4dd2-92eb-55c07a43f611" name="addAddressToCustomer" />
+				</foreach>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="b68eb703-c131-466b-a99e-8392a12f79ea" message="No Addresses to customer...So, not inserting" />
+			</otherwise>
+		</choice>
+		<set-payload value="#['Added Cusomer with id '  ++ vars.id as String  ++ ' successfully']" doc:name="Set Payload" doc:id="2d219678-cfd4-492c-8194-eeb1c1b7df87" />
+		<error-handler>
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="d6f5a7dc-256c-477c-a40b-03de527b04f2" >
+				<ee:transform doc:name="Transform Message" doc:id="7ecc5d73-1ca8-4f63-9699-e4be7ca4f465" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: 'Adding customer failed. Reason : ' ++ error.detailedDescription as String
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="findAddressByCustomerId-and-Addit-to-customer" doc:id="ddf26eff-013b-45c8-b3c4-e34a6a484fae" >
+		<db:select doc:name="Select Addresses By Customer Id" doc:id="143caf35-d962-4148-b501-44b0a3d07c6e" config-ref="Database_Config" target="addresses" >
+			<db:sql ><![CDATA[select * from address where customer_id= :cid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	cid: vars.id default 0 as String
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Add Addresses to Customer" doc:id="be96d8dc-bef1-45da-a6f2-1d4bbab161a4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+fun mapAddresses(addresses)= 
+   addresses map (address)->{
+   	houseNumber: address.house_number,
+   	street: address.street,
+   	city: address.city,
+   	pincode: address.pincode,
+   	addressType: address.address_type
+   }
+
+---
+
+{
+	customerId: vars.customer.customer_id,
+	firstName: vars.customer.first_name,
+	lastName: vars.customer.last_name,
+	email: vars.customer.email,
+	phone: vars.customer.phone,
+	addresses: mapAddresses(vars.addresses)
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getcustomerbyid" doc:id="ed28d298-86a0-45fa-aa86-7b42c1d232f6" >
+		<flow-ref doc:name="findCustomerById" doc:id="fc6a94e7-7ecd-437e-be1b-0efcec69e39b" name="findCustomerById" targetValue="#[payload[0]]" target="customer"/>
+		<flow-ref doc:name="findAddressByCustomerId-and-Addit-to-customer" doc:id="32a0a38a-8305-484f-8156-b7e7684bb4d4" name="findAddressByCustomerId-and-Addit-to-customer"/>
+		<error-handler>
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e763ce9c-91c9-4eb9-87f5-bb8e86e4772e" >
+				<ee:transform doc:name="Set Status to 404 and error message" doc:id="2184180f-0a19-4fa7-9c48-d70b1996b222" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Customer with id " ++ (vars.id default 0 as String ) ++" is not found" 
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="addAddressToCustomer" doc:id="9b3befa1-8f03-4e5d-9d69-d2cb566191ee" >
+		<flow-ref doc:name="findCustomerById" doc:id="e8873efd-c315-428b-a47e-ee69363e435f" name="findCustomerById" target="customer" targetValue="#[payload[0]]"/>
+		<db:insert doc:name="Insert" doc:id="1d6ec873-2dda-450b-9952-d03b81734cd5" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into address (house_number,street,city,pincode,
+address_type,customer_id) values (:housenumber,:street,:city,
+:pincode,:address_type,:customer_id)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	housenumber: payload.houseNumber,
+	street: payload.street,
+	city: payload.city,
+	pincode: payload.pincode,
+	address_type: payload.addressType,
+	customer_id: vars.id
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="304cd44e-418b-4e1b-89c4-af791b387122" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Address Added to Customer with id "++ vars.id ++ " successfullt"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="eece788f-1951-43c6-bf4b-9a13926133a5" >
+				<ee:transform doc:name="Set Status to 404 and error message" doc:id="d3706358-ce7f-4703-9324-d08ff4e80d6e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Customer with id " ++ (vars.id default 0 as String ) ++" is not found.
+				Cannot add address to a customer which doesnot exist" 
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<sub-flow name="findCustomerById" doc:id="092c6478-9e4b-4c1b-89ba-3bb681eb9c39" >
+		<db:select doc:name="Select Customer ById" doc:id="a855b613-de7c-4bff-988f-42c68b9c5015" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select * from customers where customer_id= :cid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	cid: vars.id default 0 as String
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Check if Customer Exists and throw error" doc:id="58ce4ecd-8011-4b2f-a71a-883d009a09ed" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+
+
+dw::Runtime::failIf(payload,
+	(value)->isEmpty(value) ,"Customer Not Found"
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<flow name="getallcustomers" doc:id="21228dfa-c97b-4d3f-89b9-da83ad85c26a" >
+		<db:select doc:name="Select" doc:id="bddb0bff-bc90-42ca-8d17-78e2b0a9f77b" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT c.customer_id,c.last_name,c.first_name,c.email,c.phone,
+ad.house_number,ad.street,ad.city,ad.pincode,ad.address_type,ad.address_id
+ FROM customers c left  join address ad  on  c.customer_id=ad.customer_id]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="e1698862-e3f8-42bc-b0c3-d423fbaa7c03" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var customersGroupedById=payload groupBy ((item, index) -> item.customer_id )
+
+var customersmappedWithAddresses = customersGroupedById mapObject (V,K,I)-> {
+	(K):{
+		customerId: K,
+		firstName: V[0].first_name,
+		lastName: V[0].last_name,
+		email: V[0].email,
+		phone: V[0].phone,
+		(addresses: ( V map (item)-> {
+						
+						houseNumber: item.house_number,
+						street: item.street,
+						city: item.city,
+						pincode: item.pincode,
+						addressType: item.address_type,
+						addressId: item.address_id
+		             }
+		             
+		             )) if (V[0].address_id != null)
+		
+	}
+}
+---
+customersmappedWithAddresses pluck (V,K,I)-> V]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="3a6abddb-3d7b-4a21-8d4a-8b88cc2b40a1" message="#[payload]"/>
+	</flow>
+</mule>
